@@ -1,5 +1,5 @@
 ; ===========================================
-; Plots standardized PWAT anom. from NCEP CFSR
+; Plots 500-hPa relative vorticity, etc. from NCEP CFSR
 ; Last updated: 26 December 2017
 ; Created by: Alicia M. Bentley
 ; Email: abentley1110@gmail.com
@@ -11,8 +11,6 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/contrib/ut_string.ncl"
 load "~/ncl/lib/tTick.ncl"
 load "~/ncl/lib/ut_string.ncl"
 load "~/ncl/lib/latlon.ncl"
-load "~/ncl/lib/shea_util.ncl"
-load "$NCARG_ROOT/lib/ncarg/nclscripts/contrib/calendar_decode2.ncl"
 ; ===========================================
 
 begin
@@ -26,7 +24,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "PW_standard_anom"   ; image name
+name = "rel_vort_500hPa"
 
 foldername = "superstorm93"  ; event name
 
@@ -85,43 +83,36 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
 ; ******************************************************
     print("Date:  "+ut_string(date,"")+" | Creating image #"+number) 	; Print date currently being plotted
 	yyyy = ut_string(date,"%Y")    			; Determine year of current date in yyyy form
-	
+
+    w_file = addfile("/cfsr/data/"+yyyy+"/w."+yyyy+".0p5.anl.nc","r")
     u_file = addfile("/cfsr/data/"+yyyy+"/u."+yyyy+".0p5.anl.nc","r")
     v_file = addfile("/cfsr/data/"+yyyy+"/v."+yyyy+".0p5.anl.nc","r")
+    t_file = addfile("/cfsr/data/"+yyyy+"/t."+yyyy+".0p5.anl.nc","r")
     g_file = addfile("/cfsr/data/"+yyyy+"/g."+yyyy+".0p5.anl.nc","r")
-    pw_file = addfile("/cfsr/data/"+yyyy+"/pwat."+yyyy+".0p5.anl.nc","r")
 
-    u = u_file->u({date},{700},:,:)
-    v = v_file->v({date},{700},:,:)
-    
-    g = g_file->g({date},{700},:,:)
-    g = g/10 ; dam
+    g = g_file->g({date},{500},:,:)
+    g = g/10
 
-  fmean = addfile("/cfsr/data/climo/mean/pwat.0p5.mean.climo.nc","r")
-  fstdev = addfile("/cfsr/data/climo/stdev/pwat.0p5.stdev.climo.nc","r")
+    w = w_file->w({date},{500},:,:)
+    w = w/100          ; convert from Pa/s to hPa/s
 
-	dne_yyyy = stringtoint(ut_string(date,"%Y"))
-	dne_mm = stringtoint(ut_string(date,"%N"))
-	dne_dd = stringtoint(ut_string(date,"%D"))
-	dne_hh = stringtoint(ut_string(date,"%H"))
+    u = u_file->u({date},{500},:,:)
+    v = v_file->v({date},{500},:,:)
+    ubarb = u * 1.94384449
+    copy_VarCoords(u,ubarb) 
+    vbarb = v * 1.94384449
+    copy_VarCoords(v,vbarb)  
 
-	print("Anom. Info.: "+dne_yyyy+" "+dne_mm+" "+dne_dd+" "+dne_hh)
-    sdoy = day_of_year(dne_yyyy,dne_mm,dne_dd)
+    rel_vort = uv2vrG_Wrap(u,v) ; Calculate relative vorticity using spherical harmonics
+    rel_vort = rel_vort*(10^5)
 
-	g_all = pw_file->pwat({date},:,:)
-;    g_all = lonFlip(g_all)
-    g_mean := fmean->pwat({sdoy},{dne_hh},:,:)
-    g_stdev := fstdev->pwat({sdoy},{dne_hh},:,:)
-    
-  	std_anom2 := ((g_all - g_mean)/g_stdev)
-  	copy_VarMeta( g_all, std_anom2 )
-  	
-  	u = u * 1.94384449 
-  	v = v * 1.94384449 
-  	
-  	do d=0,1
-		g=smth9(g,.5,.25,True)		; Smoothes geopotential height
-	end do 
+    t = t_file->t({date},{500},:,:)
+    t = t - 273.15
+    copy_VarCoords(u,t)
+
+	do d=0,1
+		t=smth9(t,.5,.25,True)		; Smooth temperature field
+	end do
 
 ;==============================================
 ; Create Shaded Map
@@ -133,31 +124,7 @@ wks_type@wkWidth = 1600
 wks_type@wkHeight = 1600
 
 wks = gsn_open_wks(wks_type,img_folder+name+"_"+number)
-
-cmap =  (/(/1.00,1.00,1.00/),\
-          (/0.00,0.00,0.00/),\
-          (/0.92,0.72,0.91/),\
-          (/0.92,0.74,0.91/),\
-          (/0.92,0.52,0.91/),\
-          (/0.87,0.31,0.87/),\
-          (/0.72,0.07,0.82/),\
-          (/0.41,0.16,0.69/),\
-          (/0.24,0.22,0.65/),\
-          (/0.22,0.42,0.72/),\
-          (/0.43,0.60,0.81/),\
-          (/0.67,0.81,0.91/),\ first blue
-          (/0.99,0.93,0.45/),\
-          (/0.96,0.78,0.37/),\
-          (/0.96,0.63,0.32/),\
-          (/0.95,0.50,0.25/),\
-          (/0.96,0.31,0.18/),\
-          (/0.91,0.05,0.05/),\
-          (/0.63,0.02,0.02/),\
-          (/0.87,0.49,0.60/),\
-          (/0.43,0.17,0.17/),\
-          (/0.46,0.41,0.41/)/)
-          
-gsn_define_colormap(wks,cmap)  
+gsn_define_colormap(wks,"sunshine_9lev")
 ;**********************************************
 
 res = True
@@ -168,38 +135,36 @@ res@gsnDraw = False
 res@mpDataBaseVersion = "MediumRes"                              ; Country Outlines
 res@mpDataSetName = "Earth..4"
 res@mpOutlineBoundarySets = "National"
-res@mpFillOn = True
-res@mpOutlineOn = True
 
-res@cnFillOn = True                                              
+res@cnFillOn = True                                              ; Turn on color fill
 res@cnFillMode = "AreaFill"
 res@cnRasterSmoothingOn = True
-res@cnLevelSelectionMode = "ExplicitLevels"             		; Shading standardized anom. information
-res@cnLinesOn = False                               
-res@cnLevelSpacingF = 1                            
-res@cnLevels = (/-6.0,-5.0,-4.0,-3.0,-2.5,-2.0,-1.5,-1.0,-.5,0,.5,1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0/)
-res@cnFillColors = (/3,4,5,6,7,8,9,10,11,-1,-1,12,13,14,15,16,17,18,20,21/)
+res@cnLevelSelectionMode = "ExplicitLevels"
+res@cnLinesOn = False                               ; Relative Vorticity Shading Information
+res@cnLevelSpacingF = 1
+res@cnLevels = (/6,8,10,12,16,20,24,28/)
+res@cnFillColors = (/-1,4,5,6,7,8,9,10,11/)
 
 ;**********************************************
 
-res@lbAutoManage = False                   	; Label Bar Information
+res@lbAutoManage = False							; Color bar information
 res@pmLabelBarOrthogonalPosF = .02  
 res@pmLabelBarHeightF = 0.08
 res@pmLabelBarWidthF = 0.73
 res@lbLabelAutoStride = True
 res@lbLabelFontHeightF = 0.0124
-res@lbBoxLinesOn  = True                   
+res@lbBoxLinesOn  = True                        
 res@lbTopMarginF = .3
 
 ;**********************************************
 
-res@tiMainString = " "						; Image labels
+res@tiMainString = " "								; Image labels
 res@tiMainJust = "CenterCenter"
 res@tiMainPosition = "Center" 
 res@tiMainOffsetYF = .02
 res@tiXAxisFontHeightF = .015
 
-res@gsnLeftString = "700-hPa height, wind; PW, std. PW anom. (1979-2009 CFSR)"
+res@gsnLeftString = "500-hPa geo. height, temp., ascent, rel. vort., and wind"
 res@gsnLeftStringOrthogonalPosF = .012
 res@gsnLeftStringFontHeightF = .008
 res@gsnRightString = "(CFSR) "+ut_string(date,"")
@@ -208,7 +173,7 @@ res@gsnRightStringFontHeightF = .013
 
 ; *********************************************
 
-res@mpGeophysicalLineThicknessF = 2.0		; Map Information
+res@mpGeophysicalLineThicknessF = 2.0				; Map details
 res@mpNationalLineThicknessF = 2.0
 res@mpUSStateLineThicknessF = 2.0
 res@mpOutlineSpecifiers = (/"United States"/)+" : States"
@@ -219,13 +184,12 @@ res@mpUSStateLineColor = "grey29"
 
 ; *********************************************
 
-res@mpGridAndLimbOn = True					; Grid lines and tick mark information
+res@mpGridAndLimbOn = True							; Grid lines and tick mark information
 res@mpGridLineDashPattern = 5
 res@mpGridLatSpacingF = 20.
 res@mpGridLonSpacingF = 20.
 res@mpGridLineThicknessF = 3
 res@mpGridLineColor = "grey12"
-res@pmTickMarkDisplayMode = "Always"
 
 tmres = True
 tmres@tmXBLabelFontHeightF = .013
@@ -237,7 +201,7 @@ tmres@tmXBMinorLengthF = .006
 
 tmres@tmYRMinorValues = (/5,10,15,25,30,35,45,50,55,65/)
 tmres@tmYLMinorValues = (/5,10,15,25,30,35,45,50,55,65/)
-tmres@tmXBMinorValues = (/-175,-170,-165,-160,-155,-150,-145,-135,-130,-125,-120,-115,-110,-105,-95,-90,-85,-80,-75,-70,-65,-55,-50,-45,-35,-30,-25,-15,-10,-5,5,10,15,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,145,150,155,160,165,170,175/)
+tmres@tmXBMinorValues = (/-155,-150,-145,-135,-130,-125,-120,-115,-110,-105,-95,-90,-85,-80,-75,-70,-65,-55,-50,-45,-35,-30,-25,-15,-10,-5,5,10,15,25,30,35/)
 
 ; *************************************************************
 
@@ -274,7 +238,7 @@ end if
 
 ; *************************************************************
 
-cnres = True								; Geopotential height information
+cnres = True						; Geopotential height information
 
 cnres@gsnFrame = False                                        
 cnres@gsnDraw = False
@@ -288,9 +252,9 @@ cnres@cnLinesOn = True
 cnres@cnLabelMasking = True
 cnres@cnLineThicknessF = 4                     
 cnres@cnLevelSelectionMode = "ManualLevels"
-cnres@cnLevelSpacingF = 3
-cnres@cnMinLevelValF = 90
-cnres@cnMaxLevelValF = 420   
+cnres@cnLevelSpacingF = 6
+cnres@cnMinLevelValF = 450
+cnres@cnMaxLevelValF = 606  
 cnres@cnLineLabelAngleF = 0.0
 cnres@cnLineLabelInterval = 2
 cnres@cnLineLabelDensityF = .90
@@ -298,11 +262,65 @@ cnres@cnLineLabelDensityF = .90
 ;cnres@cnSmoothingDistanceF = 0.009
 cnres@cnLineLabelBackgroundColor = -1
 cnres@cnLineLabelFontHeightF = 0.008
-cnres@gsnAddCyclic =  True
+cnres@gsnAddCyclic = True
 
 ; *************************************************************
 
-    bres = True								; Wind barb information
+tres = True						; Temperature information
+
+tres@gsnFrame = False                                        
+tres@gsnDraw = False
+
+tres@gsnLeftString = " "
+tres@gsnRightString = " "
+tres@cnInfoLabelOn = False                    
+tres@cnFillOn = False
+tres@cnLinesOn = True
+tres@cnLabelMasking = True
+tres@cnLineThicknessF = 4
+tres@cnLineColor = "red"
+tres@cnLineLabelFontColor = "red"
+tres@cnLevelSelectionMode = "ManualLevels"
+tres@cnLevelSpacingF = 4
+tres@cnMinLevelValF = -104
+tres@cnMaxLevelValF = 16
+tres@cnLineLabelAngleF = 0.0
+tres@cnLineLabelInterval = 1
+tres@cnLineLabelDensityF = .90
+tres@cnLineLabelBackgroundColor = -1
+tres@cnLineLabelFontHeightF = 0.008
+tres@cnLineDashPattern = 5
+tres@gsnAddCyclic = True
+
+; *************************************************************
+
+omres = True						; Vertical motion information
+
+omres@gsnFrame = False                                        
+omres@gsnDraw = False
+
+omres@gsnLeftString = " "
+omres@gsnRightString = " "
+omres@cnInfoLabelOn = False                    
+omres@cnFillOn = False
+omres@cnLinesOn = True
+omres@cnLabelMasking = True
+omres@cnLineLabelsOn = False
+omres@cnLineThicknessF = 4
+omres@cnLineColor = "blue"
+omres@cnLevelSelectionMode = "ManualLevels"
+omres@cnLevelSpacingF = 0.005
+omres@cnMaxLevelValF = -0.005 
+omres@cnLineLabelAngleF = 0.0
+omres@cnLineLabelInterval = 1
+omres@cnLineLabelDensityF = .77
+omres@cnLineLabelBackgroundColor = -1
+omres@cnLineLabelFontHeightF = 0.018
+omres@gsnAddCyclic = True
+
+; *************************************************************
+
+    bres = True						; Wind barb information
 
     bres@gsnFrame = False                                        
     bres@gsnDraw = False
@@ -311,7 +329,7 @@ cnres@gsnAddCyclic =  True
     bres@gsnRightString = " "
 
     bres@vcGlyphStyle = "WindBarb"
-    bres@vcWindBarbColor = "grey12"
+    bres@vcWindBarbColor = "grey20"
     bres@vcWindBarbCalmCircleSizeF = 0
     bres@vcWindBarbLineThicknessF = 3.0
     bres@vcRefAnnoOn = False
@@ -324,29 +342,37 @@ cnres@gsnAddCyclic =  True
     bres@vcWindBarbTickSpacingF = 0.130
     bres@vcWindBarbTickAngleF = 55.0
     bres@gsnFrame = False
-    bres@gsnAddCyclic =  True
+    bres@gsnAddCyclic = True
 
 ; *************************************************************
+res@mpFillOn = True
+res@mpOutlineOn = True
 res@mpFillDrawOrder = "PreDraw"
 res@cnFillDrawOrder = "PreDraw"
 cnres@cnLineDrawOrder ="Draw"
+tres@cnLineDrawOrder ="Draw"
+omres@cnLineDrawOrder ="Draw" 
 bres@vcVectorDrawOrder = "Draw"
 res@mpOutlineDrawOrder = "Draw"
 res@mpGridAndLimbDrawOrder = "PostDraw"
 
-plot = gsn_csm_contour_map(wks, std_anom2, res)          	; Plot filled standardized anom. map
-contours = gsn_csm_contour(wks, g, cnres)					; Plot geopotential height
-barbs = gsn_csm_vector(wks, u, v, bres)						; Plot wind barbs
-plot = add_map_tickmarks(wks,plot,tmres)					; Plot tick marks
+plot = gsn_csm_contour_map(wks, rel_vort, res)          ; Plot filled contour map
+contours = gsn_csm_contour(wks, g, cnres)
+temp = gsn_csm_contour(wks, t, tres)
+other = gsn_csm_contour(wks, w, omres)
+barbs = gsn_csm_vector(wks, ubarb, vbarb, bres)
+plot = add_map_tickmarks(wks,plot,tmres)
 
 ;********************************************
 
-overlay(plot,contours)		; Overlay variable order
+overlay(plot,temp)
+overlay(plot,contours)
+overlay(plot,other)
 overlay(plot,barbs)
 
 ;********************************************
 
-draw(plot)					; Draw final image
+draw(plot)	; Draw final image
 frame(wks)
 
 ;********************************************
@@ -365,5 +391,4 @@ print("**************")
 print(" END SCRIPT ")
 print("**************")
 print(" ")
-
 end

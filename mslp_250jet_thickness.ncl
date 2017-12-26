@@ -24,7 +24,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "mslp_jet"   ; image name
+name = "mslp_jet_thickness"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -57,13 +57,13 @@ print("Images finally located: "+dir_out)
 
 byyyy = 1993		; Define first date to plot (yyyy mm dd hh)
 bmm = 3
-bdd = 14
-bhh = 0
+bdd = 13
+bhh = 6
 
 eyyyy = 1993		; Define last date to plot (yyyy mm dd hh)
 emm = 3
 edd = 14
-ehh = 18
+ehh = 0
 
 timeUnits = "hours since 1800-01-01 00:00:00"
 bdate = cd_inv_calendar(byyyy,bmm,bdd,bhh,00,00,timeUnits,0)

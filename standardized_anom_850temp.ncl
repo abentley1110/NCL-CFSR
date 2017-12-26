@@ -1,5 +1,5 @@
 ; ===========================================
-; Plots standardized PWAT anom. from NCEP CFSR
+; Plots standardized 8500-hPa temp anom. from NCEP CFSR
 ; Last updated: 26 December 2017
 ; Created by: Alicia M. Bentley
 ; Email: abentley1110@gmail.com
@@ -26,7 +26,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "PW_standard_anom"   ; image name
+name = "850temp_standard_anom"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -89,39 +89,46 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
     u_file = addfile("/cfsr/data/"+yyyy+"/u."+yyyy+".0p5.anl.nc","r")
     v_file = addfile("/cfsr/data/"+yyyy+"/v."+yyyy+".0p5.anl.nc","r")
     g_file = addfile("/cfsr/data/"+yyyy+"/g."+yyyy+".0p5.anl.nc","r")
-    pw_file = addfile("/cfsr/data/"+yyyy+"/pwat."+yyyy+".0p5.anl.nc","r")
+    t_file = addfile("/cfsr/data/"+yyyy+"/t."+yyyy+".0p5.anl.nc","r")
 
-    u = u_file->u({date},{700},:,:)
-    v = v_file->v({date},{700},:,:)
+    time = u_file->time
+
+;    date = cd_inv_calendar(yyyy,smm,sdd,shh,00,00,time@units,0)
+    print("Date:  "+ut_string(date,""))
+
+    u = u_file->u({date},{850},:,:)
+    v = v_file->v({date},{850},:,:)
     
-    g = g_file->g({date},{700},:,:)
-    g = g/10 ; dam
+    g = g_file->g({date},{850},:,:)
+    g = g/10
 
-  fmean = addfile("/cfsr/data/climo/mean/pwat.0p5.mean.climo.nc","r")
-  fstdev = addfile("/cfsr/data/climo/stdev/pwat.0p5.stdev.climo.nc","r")
+  fmean = addfile("/cfsr/data/climo/mean/t.0p5.mean.climo.nc","r")
+  fstdev = addfile("/cfsr/data/climo/stdev/t.0p5.stdev.climo.nc","r")
 
 	dne_yyyy = stringtoint(ut_string(date,"%Y"))
 	dne_mm = stringtoint(ut_string(date,"%N"))
 	dne_dd = stringtoint(ut_string(date,"%D"))
 	dne_hh = stringtoint(ut_string(date,"%H"))
-
+	
 	print("Anom. Info.: "+dne_yyyy+" "+dne_mm+" "+dne_dd+" "+dne_hh)
     sdoy = day_of_year(dne_yyyy,dne_mm,dne_dd)
 
-	g_all = pw_file->pwat({date},:,:)
-;    g_all = lonFlip(g_all)
-    g_mean := fmean->pwat({sdoy},{dne_hh},:,:)
-    g_stdev := fstdev->pwat({sdoy},{dne_hh},:,:)
+	g_all = t_file->t({date},{850},:,:)
+    g_mean := fmean->t({sdoy},{dne_hh},{850},:,:)
+    g_stdev := fstdev->t({sdoy},{dne_hh},{850},:,:)
     
   	std_anom2 := ((g_all - g_mean)/g_stdev)
   	copy_VarMeta( g_all, std_anom2 )
   	
   	u = u * 1.94384449 
   	v = v * 1.94384449 
-  	
-  	do d=0,1
-		g=smth9(g,.5,.25,True)		; Smoothes geopotential height
-	end do 
+    
+    t = g_all - 273.15
+  	copy_VarCoords(g,t)
+
+	do d=0,3
+		t=smth9(t,.5,.25,True)   ; Smoothes temperature field
+	end do
 
 ;==============================================
 ; Create Shaded Map
@@ -199,7 +206,7 @@ res@tiMainPosition = "Center"
 res@tiMainOffsetYF = .02
 res@tiXAxisFontHeightF = .015
 
-res@gsnLeftString = "700-hPa height, wind; PW, std. PW anom. (1979-2009 CFSR)"
+res@gsnLeftString = "850-hPa geo. height, temp., std. temp. anom. (1979-2009 CFSR), wind"
 res@gsnLeftStringOrthogonalPosF = .012
 res@gsnLeftStringFontHeightF = .008
 res@gsnRightString = "(CFSR) "+ut_string(date,"")
@@ -274,7 +281,7 @@ end if
 
 ; *************************************************************
 
-cnres = True								; Geopotential height information
+cnres = True							; Geopotential height information
 
 cnres@gsnFrame = False                                        
 cnres@gsnDraw = False
@@ -286,14 +293,14 @@ cnres@cnInfoLabelOn = False
 cnres@cnFillOn = False
 cnres@cnLinesOn = True
 cnres@cnLabelMasking = True
-cnres@cnLineThicknessF = 4                     
+cnres@cnLineThicknessF = 4.0                     
 cnres@cnLevelSelectionMode = "ManualLevels"
 cnres@cnLevelSpacingF = 3
 cnres@cnMinLevelValF = 90
 cnres@cnMaxLevelValF = 420   
 cnres@cnLineLabelAngleF = 0.0
 cnres@cnLineLabelInterval = 2
-cnres@cnLineLabelDensityF = .90
+cnres@cnLineLabelDensityF = .80
 ;cnres@cnSmoothingOn = True
 ;cnres@cnSmoothingDistanceF = 0.009
 cnres@cnLineLabelBackgroundColor = -1
@@ -302,7 +309,36 @@ cnres@gsnAddCyclic =  True
 
 ; *************************************************************
 
-    bres = True								; Wind barb information
+tres = True								; Temperature contour information
+
+tres@gsnFrame = False                                        
+tres@gsnDraw = False
+
+tres@cnFillMode = "AreaFill"
+tres@gsnLeftString = " "
+tres@gsnRightString = " "
+tres@cnInfoLabelOn = False                    
+tres@cnFillOn = False
+tres@cnLinesOn = True
+tres@cnLabelMasking = True
+tres@cnLineThicknessF = 4.0
+tres@cnLineColor = "red"
+tres@cnLineLabelFontColor = "red"
+tres@cnLevelSelectionMode = "ManualLevels"
+tres@cnLevelSpacingF = 4
+tres@cnMinLevelValF = -120
+tres@cnMaxLevelValF = 120
+tres@cnLineLabelsOn = True
+tres@cnLineLabelAngleF = 0.0
+tres@cnLineLabelInterval = 2
+tres@cnLineLabelDensityF = 1.0
+tres@cnLineLabelBackgroundColor = -1
+tres@cnLineLabelFontHeightF = 0.008
+tres@cnLineDashPattern = 5
+tres@gsnAddCyclic =  True
+; *************************************************************
+
+    bres = True							; Wind barb information
 
     bres@gsnFrame = False                                        
     bres@gsnDraw = False
@@ -327,21 +363,24 @@ cnres@gsnAddCyclic =  True
     bres@gsnAddCyclic =  True
 
 ; *************************************************************
-res@mpFillDrawOrder = "PreDraw"
+res@mpFillDrawOrder = "PreDraw"				; Draw order 
 res@cnFillDrawOrder = "PreDraw"
 cnres@cnLineDrawOrder ="Draw"
+tres@cnLineDrawOrder ="Draw"
 bres@vcVectorDrawOrder = "Draw"
 res@mpOutlineDrawOrder = "Draw"
 res@mpGridAndLimbDrawOrder = "PostDraw"
 
-plot = gsn_csm_contour_map(wks, std_anom2, res)          	; Plot filled standardized anom. map
-contours = gsn_csm_contour(wks, g, cnres)					; Plot geopotential height
-barbs = gsn_csm_vector(wks, u, v, bres)						; Plot wind barbs
-plot = add_map_tickmarks(wks,plot,tmres)					; Plot tick marks
+plot = gsn_csm_contour_map(wks, std_anom2, res)         ; Plot filled standardized anom. map
+contours = gsn_csm_contour(wks, g, cnres)				; Plot geopotential height contours
+other = gsn_csm_contour(wks, t, tres)					; Plot temperature contours
+barbs = gsn_csm_vector(wks, u, v, bres)					; Plot wind barbs
+plot = add_map_tickmarks(wks,plot,tmres)				; Plot tick marks
 
 ;********************************************
 
-overlay(plot,contours)		; Overlay variable order
+overlay(plot,other)			; Overlay variable order
+overlay(plot,contours)
 overlay(plot,barbs)
 
 ;********************************************
