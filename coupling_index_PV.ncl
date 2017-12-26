@@ -442,8 +442,8 @@ plot = add_map_tickmarks(wks,plot,tmres)
 
 ;********************************************
 
-overlay(plot,lows)
 overlay(plot,contours)
+overlay(plot,lows)
 overlay(plot,barbs)
 
 ;********************************************
