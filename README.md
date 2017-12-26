@@ -1,7 +1,7 @@
 # NCL-CFSR
 Purpose: Plot atmospheric variables from the NCEP CFSR dataset using NCL
 
-*PRIOR TO USING THIS CODE*  
+*PRIOR TO USING THIS CODE:*  
 1) Download functions and colorbars from: ___________________________________
 2) Update path to downloaded NCL colorbars in .cshrc file
 3) Update paths to downloaded functions in code.
