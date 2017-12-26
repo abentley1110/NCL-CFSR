@@ -1,5 +1,5 @@
 ; ===========================================
-; Plots standardized 250-hPa v-wind anom. from NCEP CFSR
+; Plots standardized 500-hPa geo. height anom. from NCEP CFSR
 ; Last updated: 26 December 2017
 ; Created by: Alicia M. Bentley
 ; Email: abentley1110@gmail.com
@@ -26,7 +26,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "250vwind_standard_anom"   ; image name
+name = "500geo_standard_anom"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -88,15 +88,15 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
 	
     u_file = addfile("/cfsr/data/"+yyyy+"/u."+yyyy+".0p5.anl.nc","r")
     v_file = addfile("/cfsr/data/"+yyyy+"/v."+yyyy+".0p5.anl.nc","r")
-    t_file = addfile("/cfsr/data/"+yyyy+"/t."+yyyy+".0p5.anl.nc","r")
+    g_file = addfile("/cfsr/data/"+yyyy+"/g."+yyyy+".0p5.anl.nc","r")
 
-    u = u_file->u({date},{250},:,:)
-    v = v_file->v({date},{250},:,:)
+    u = u_file->u({date},{500},:,:)
+    v = v_file->v({date},{500},:,:)
 ;    wind = ((u^2)+(v^2))^(0.5)
 ;    copy_VarCoords(u,wind)
 
-  fmean = addfile("/cfsr/data/climo/mean/v.0p5.mean.climo.nc","r")
-  fstdev = addfile("/cfsr/data/climo/stdev/v.0p5.stdev.climo.nc","r")
+  fmean = addfile("/cfsr/data/climo/mean/g.0p5.mean.climo.nc","r")
+  fstdev = addfile("/cfsr/data/climo/stdev/g.0p5.stdev.climo.nc","r")
 
 	dne_yyyy = stringtoint(ut_string(date,"%Y"))
 	dne_mm = stringtoint(ut_string(date,"%N"))
@@ -106,9 +106,9 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
 	print("Anom. Info.: "+dne_yyyy+" "+dne_mm+" "+dne_dd+" "+dne_hh)
     sdoy = day_of_year(dne_yyyy,dne_mm,dne_dd)
 
-	g_all = v
-    g_mean := fmean->v({sdoy},{dne_hh},{250},:,:)
-    g_stdev := fstdev->v({sdoy},{dne_hh},{250},:,:)
+	g_all = g_file->g({date},{500},:,:)
+    g_mean := fmean->g({sdoy},{dne_hh},{500},:,:)
+    g_stdev := fstdev->g({sdoy},{dne_hh},{500},:,:)
     
   	std_anom2 := ((g_all - g_mean)/g_stdev)
   	copy_VarMeta( g_all, std_anom2 )
@@ -116,22 +116,7 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
   	u = u * 1.94384449 
   	v = v * 1.94384449 
     
-    
-  lev_pv  = (/20000,25000,30000/)
-  lev_pv2  = (/200,250,300/)
-  upv = u_file->u({date},{lev_pv2},:,:)
-  vpv = v_file->v({date},{lev_pv2},:,:)
-  tpv = t_file->t({date},{lev_pv2},:,:)
-
-  lev_pv@units = "Pa"
-  pv_all = PotVortIsobaric(lev_pv,upv,vpv,tpv,tpv&lat,1,0)
-  pv = dim_avg_n_Wrap(pv_all,0)
-  pv = pv*(10^6)
-  copy_VarCoords(u,pv)
-
-  do d=0,3
-    pv=smth9(pv,.5,.25,True)		; Smoothes PV field
-  end do    
+  	g_all = g_all/10
 
 ;==============================================
 ; Create Shaded Map
@@ -184,7 +169,7 @@ res@mpOutlineOn = True
 res@cnFillOn = True                                              
 res@cnFillMode = "AreaFill"
 res@cnRasterSmoothingOn = True
-res@cnLevelSelectionMode = "ExplicitLevels"					; Shading standardized anom. information
+res@cnLevelSelectionMode = "ExplicitLevels"             		; Shading standardized anom. information
 res@cnLinesOn = False                               
 res@cnLevelSpacingF = 1                            
 res@cnLevels = (/-6.0,-5.0,-4.0,-3.0,-2.5,-2.0,-1.5,-1.0,-.5,0,.5,1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0/)
@@ -192,7 +177,7 @@ res@cnFillColors = (/3,4,5,6,7,8,9,10,11,-1,-1,12,13,14,15,16,17,18,20,21/)
 
 ;**********************************************
 
-res@lbAutoManage = False                   ; Label Bar Information
+res@lbAutoManage = False                   	; Label Bar Information
 res@pmLabelBarOrthogonalPosF = .02  
 res@pmLabelBarHeightF = 0.08
 res@pmLabelBarWidthF = 0.73
@@ -203,13 +188,13 @@ res@lbTopMarginF = .3
 
 ;**********************************************
 
-res@tiMainString = " "					; Image labels
+res@tiMainString = " "						; Image labels
 res@tiMainJust = "CenterCenter"
 res@tiMainPosition = "Center" 
 res@tiMainOffsetYF = .02
 res@tiXAxisFontHeightF = .015
 
-res@gsnLeftString = "300-200-hPa PV; 250-hPa wind, v-wind anom. (1979-2009 CFSR)"
+res@gsnLeftString = "500-hPa geo. height, std. geo. height anom. (1979-2009 CFSR), wind"
 res@gsnLeftStringOrthogonalPosF = .012
 res@gsnLeftStringFontHeightF = .008
 res@gsnRightString = "(CFSR) "+ut_string(date,"")
@@ -218,7 +203,7 @@ res@gsnRightStringFontHeightF = .013
 
 ; *********************************************
 
-res@mpGeophysicalLineThicknessF = 2.0		; Map information
+res@mpGeophysicalLineThicknessF = 2.0		; Map Information
 res@mpNationalLineThicknessF = 2.0
 res@mpUSStateLineThicknessF = 2.0
 res@mpOutlineSpecifiers = (/"United States"/)+" : States"
@@ -284,7 +269,7 @@ end if
 
 ; *************************************************************
 
-cnres = True							; PV contour information
+cnres = True							; Geopotential height information
 
 cnres@gsnFrame = False                                        
 cnres@gsnDraw = False
@@ -296,19 +281,20 @@ cnres@cnInfoLabelOn = False
 cnres@cnFillOn = False
 cnres@cnLinesOn = True
 cnres@cnLabelMasking = True
-cnres@cnLineThicknessF = 4.0                     
+cnres@cnLineThicknessF = 4                     
 cnres@cnLevelSelectionMode = "ManualLevels"
-cnres@cnLevelSpacingF = 1
-cnres@cnMinLevelValF = 1
-cnres@cnMaxLevelValF = 30   
+cnres@cnLevelSpacingF = 6
+cnres@cnMinLevelValF = 450
+cnres@cnMaxLevelValF = 606  
 cnres@cnLineLabelAngleF = 0.0
 cnres@cnLineLabelInterval = 2
 cnres@cnLineLabelDensityF = .90
-cnres@cnLineLabelFontHeightF = 0.008
-cnres@cnLineLabelFontColor = "grey10"
-cnres@cnLineColor = "grey10"
+;cnres@cnSmoothingOn = True
+;cnres@cnSmoothingDistanceF = 0.009
 cnres@cnLineLabelBackgroundColor = -1
+cnres@cnLineLabelFontHeightF = 0.008
 cnres@gsnAddCyclic =  True
+
 
 ; *************************************************************
 
@@ -337,21 +323,21 @@ cnres@gsnAddCyclic =  True
     bres@gsnAddCyclic =  True
 
 ; *************************************************************
-res@mpFillDrawOrder = "PreDraw"
+res@mpFillDrawOrder = "PreDraw"				; Draw order of variables
 res@cnFillDrawOrder = "PreDraw"
 cnres@cnLineDrawOrder ="Draw"
 bres@vcVectorDrawOrder = "Draw"
 res@mpOutlineDrawOrder = "Draw"
 res@mpGridAndLimbDrawOrder = "PostDraw"
 
-plot = gsn_csm_contour_map(wks, std_anom2, res)          	; Plot filled standardized anom. map
-contours = gsn_csm_contour(wks, pv, cnres)					; Plot geopotential height contours
+plot = gsn_csm_contour_map(wks, std_anom2, res)          	; Plot filled contour map
+contours = gsn_csm_contour(wks, g_all, cnres)			 	; Plot geopotential height contours
 barbs = gsn_csm_vector(wks, u, v, bres)						; Plot wind barbs
 plot = add_map_tickmarks(wks,plot,tmres)					; Plot tick marks
 
 ;********************************************
 
-overlay(plot,contours)
+overlay(plot,contours)		; Overlay variable order
 overlay(plot,barbs)
 
 ;********************************************
