@@ -1,5 +1,8 @@
 ; ===========================================
-; Plot composited PV on isentropic surfaces
+; Plots Precipitable Water (PW) 700-hPa wind, etc. from NCEP CFSR
+; Last updated: 26 December 2017
+; Created by: Alicia M. Bentley
+; Email: abentley1110@gmail.com
 ; ===========================================
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
