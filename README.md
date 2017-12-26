@@ -1,5 +1,7 @@
 # NCL-CFSR
-Purpose: Plot atmospheric variables from the NCEP CFSR dataset using NCL.
+Purpose: Plot atmospheric variables from the NCEP CFSR dataset using NCL
+
+Code created by Alicia M. Bentley while attending the University at Albany, SUNY.
 
 See the NCL webpage for help with plotting resources: https://www.ncl.ucar.edu/Document/Graphics/Resources/ 
 
