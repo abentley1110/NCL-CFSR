@@ -24,7 +24,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "dt_2pvu"   ; image name
+name = "dt_2pvu_relvort"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -57,13 +57,13 @@ print("Images finally located: "+dir_out)
 
 byyyy = 1993		; Define first date to plot (yyyy mm dd hh)
 bmm = 3
-bdd = 14
-bhh = 0
+bdd = 13
+bhh = 6
 
 eyyyy = 1993		; Define last date to plot (yyyy mm dd hh)
 emm = 3
 edd = 14
-ehh = 18
+ehh = 0
 
 timeUnits = "hours since 1800-01-01 00:00:00"
 bdate = cd_inv_calendar(byyyy,bmm,bdd,bhh,00,00,timeUnits,0)
@@ -131,15 +131,14 @@ res@mpDataSetName = "Earth..4"
 res@mpOutlineBoundarySets = "National"
 
 res@cnFillOn = True                                              ; Turn on color fill
-;res@cnFillMode = "RasterFill"
 res@cnFillMode = "AreaFill"
 res@cnRasterSmoothingOn = True
 res@cnLevelSelectionMode = "ManualLevels"
-res@cnLinesOn = False                               ; Turn off contour lines
+res@cnLinesOn = False                               ; Shading DT theta information
 res@cnLevelSpacingF = 1
-res@cnLevelSpacingF = 6                             ; Shading interval
+res@cnLevelSpacingF = 6                             
 res@cnMinLevelValF = 264
-res@cnMaxLevelValF = 384                            ; Shading interval
+res@cnMaxLevelValF = 384                            
 res@cnFillColors = (/24,25,26,27,7,9,10,11,12,13,14,16,17,18,19,20,21,22,23,35,37,38,34,31,0/)
 
 ;**********************************************
@@ -150,7 +149,7 @@ res@pmLabelBarHeightF = 0.08
 res@pmLabelBarWidthF = 0.73
 res@lbLabelAutoStride = True
 res@lbLabelFontHeightF = 0.0124
-res@lbBoxLinesOn  = True                   ; Outline the color bar 
+res@lbBoxLinesOn  = True                   
 res@lbTopMarginF = .3
 
 ;**********************************************
