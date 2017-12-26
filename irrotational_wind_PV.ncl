@@ -320,7 +320,7 @@ pvres@cnFillOn = False
 pvres@cnLineLabelsOn = True
 pvres@cnLinesOn = True
 pvres@cnLabelMasking = True
-pvres@cnLineThicknessF = 4                    
+pvres@cnLineThicknessF = 4.5                    
 pvres@cnLevelSelectionMode = "ManualLevels"
 pvres@cnLevelSpacingF = 1
 pvres@cnMinLevelValF = 1
@@ -330,8 +330,8 @@ pvres@cnLineLabelInterval = 2
 pvres@cnLineLabelDensityF = .77
 pvres@cnLineLabelBackgroundColor = -1
 pvres@cnLineLabelFontHeightF = 0.008
-pvres@cnLineLabelFontColor = "grey15"
-pvres@cnLineColor = "grey15"
+pvres@cnLineLabelFontColor = "grey10"
+pvres@cnLineColor = "grey10"
 
 pvres@gsnAddCyclic =  True
 
@@ -379,7 +379,7 @@ omres@gsnAddCyclic =  True
     vres@vcFillArrowFillColor = "black"
     vres@vcWindBarbCalmCircleSizeF = 0
     vres@vcWindBarbLineThicknessF = 7.5
-    vres@vcMinDistanceF = 0.023
+    vres@vcMinDistanceF = 0.026
     vres@vcMinMagnitudeF = 3.0
     vres@gsnAddCyclic =  True
     

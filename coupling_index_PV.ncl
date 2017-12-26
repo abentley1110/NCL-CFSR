@@ -365,8 +365,8 @@ pvres@cnLineLabelInterval = 2
 pvres@cnLineLabelDensityF = .77
 pvres@cnLineLabelBackgroundColor = -1
 pvres@cnLineLabelFontHeightF = 0.008
-pvres@cnLineLabelFontColor = "grey15"
-pvres@cnLineColor = "grey15"
+pvres@cnLineLabelFontColor = "grey10"
+pvres@cnLineColor = "grey10"
 
 pvres@gsnAddCyclic =  True
 
