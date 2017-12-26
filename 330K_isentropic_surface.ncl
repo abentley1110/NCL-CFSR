@@ -38,12 +38,12 @@ do x = 0,enddomain-1       ; loop through all the domains you selected (only 1 d
 
 domain = folder(x)
 
-img_create = "/lb13/abentley/scripts/github"   ; Define directory where images will be initially made (and create it)
+img_create = "/path/to/image/creation/location"   ; Define directory where images will be initially made (and create it)
 system("mkdir "+img_create+"/"+foldername)
 system("mkdir "+img_create+"/"+foldername+"/"+name)
 img_folder = img_create+"/"+foldername+"/"+name+"/"
 
-img_loc = "/lb11/abentley/www/research_images"   ; Define directory where images will ultimately be located (and create it)
+img_loc = "/path/to/image/final/location"   ; Define directory where images will ultimately be located (and create it)
 system("mkdir "+img_loc+"/"+foldername)
 system("mkdir "+img_loc+"/"+foldername+"/"+domain)
 system("mkdir "+img_loc+"/"+foldername+"/"+domain+"/"+name)
