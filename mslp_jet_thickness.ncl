@@ -347,6 +347,7 @@ system("'rm' "+img_folder+name+"_"+number+".png")
 number = number + 1
 
 end do     ; end date loop
+print(" ")
 end do     ; end domain loop
 
 print(" ")
