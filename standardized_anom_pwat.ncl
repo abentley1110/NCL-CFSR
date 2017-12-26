@@ -1,5 +1,5 @@
 ; ===========================================
-; Plots standardized MSLP anom. from NCEP CFSR
+; Plots standardized PWAT anom. from NCEP CFSR
 ; Last updated: 26 December 2017
 ; Created by: Alicia M. Bentley
 ; Email: abentley1110@gmail.com
@@ -17,16 +17,11 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/contrib/calendar_decode2.ncl"
 
 begin
 
-print(" ")
-print("**************")
-print(" START SCRIPT ")
-print("**************")
-
 ;*******************************************************
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "mslp_standard_anom"   ; image name
+name = "PW_standard_anom"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -89,17 +84,18 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
     u_file = addfile("/cfsr/data/"+yyyy+"/u."+yyyy+".0p5.anl.nc","r")
     v_file = addfile("/cfsr/data/"+yyyy+"/v."+yyyy+".0p5.anl.nc","r")
     g_file = addfile("/cfsr/data/"+yyyy+"/g."+yyyy+".0p5.anl.nc","r")
-    pmsl_file = addfile("/cfsr/data/"+yyyy+"/pmsl."+yyyy+".0p5.anl.nc","r")
+    pw_file = addfile("/cfsr/data/"+yyyy+"/pwat."+yyyy+".0p5.anl.nc","r")
 
-    u = u_file->u({date},{1000},:,:)
-    v = v_file->v({date},{1000},:,:)
+    u = u_file->u({date},{700},:,:)
+    v = v_file->v({date},{700},:,:)
+    
+    g = g_file->g({date},{700},:,:)
+    g = g/10 ; dam
 
-  	fmean = addfile("/cfsr/data/climo/mean/pmsl.0p5.mean.climo.nc","r")
-  	fstdev = addfile("/cfsr/data/climo/stdev/pmsl.0p5.stdev.climo.nc","r")
-  
-  	pmsl = pmsl_file->pmsl({date},:,:)
+  fmean = addfile("/cfsr/data/climo/mean/pwat.0p5.mean.climo.nc","r")
+  fstdev = addfile("/cfsr/data/climo/stdev/pwat.0p5.stdev.climo.nc","r")
 
-	dne_yyyy = stringtoint(ut_string(date,"%Y"))		; Extract date information from current date
+	dne_yyyy = stringtoint(ut_string(date,"%Y"))
 	dne_mm = stringtoint(ut_string(date,"%N"))
 	dne_dd = stringtoint(ut_string(date,"%D"))
 	dne_hh = stringtoint(ut_string(date,"%H"))
@@ -107,9 +103,10 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
 	print("Anom. Info.: "+dne_yyyy+" "+dne_mm+" "+dne_dd+" "+dne_hh)
     sdoy = day_of_year(dne_yyyy,dne_mm,dne_dd)
 
-	g_all = pmsl
-    g_mean := fmean->pmsl({sdoy},{dne_hh},:,:)
-    g_stdev := fstdev->pmsl({sdoy},{dne_hh},:,:)
+	g_all = pw_file->pwat({date},:,:)
+;    g_all = lonFlip(g_all)
+    g_mean := fmean->pwat({sdoy},{dne_hh},:,:)
+    g_stdev := fstdev->pwat({sdoy},{dne_hh},:,:)
     
   	std_anom2 := ((g_all - g_mean)/g_stdev)
   	copy_VarMeta( g_all, std_anom2 )
@@ -117,7 +114,9 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
   	u = u * 1.94384449 
   	v = v * 1.94384449 
   	
-    pmsl = pmsl/100       ; convert from Pa/s to hPa/s  
+  	do d=0,1
+		g=smth9(g,.5,.25,True)		; Smoothes geopotential height
+	end do 
 
 ;==============================================
 ; Create Shaded Map
@@ -164,15 +163,13 @@ res@gsnDraw = False
 res@mpDataBaseVersion = "MediumRes"                              ; Country Outlines
 res@mpDataSetName = "Earth..4"
 res@mpOutlineBoundarySets = "National"
-res@mpFillOn = True
-res@mpOutlineOn = True
 
-res@cnFillOn = True                                              
+res@cnFillOn = True                                              ; Turn on color fill
 res@cnFillMode = "AreaFill"
 res@cnRasterSmoothingOn = True
 res@cnLevelSelectionMode = "ExplicitLevels"
-res@cnLinesOn = False                               ; Standardized anomaly shading info
-res@cnLevelSpacingF = 1                            
+res@cnLinesOn = False                               ; Turn off contour lines
+res@cnLevelSpacingF = 1                            ; Shading interval
 res@cnLevels = (/-6.0,-5.0,-4.0,-3.0,-2.5,-2.0,-1.5,-1.0,-.5,0,.5,1.0,1.5,2.0,2.5,3.0,4.0,5.0,6.0/)
 res@cnFillColors = (/3,4,5,6,7,8,9,10,11,-1,-1,12,13,14,15,16,17,18,20,21/)
 
@@ -195,7 +192,7 @@ res@tiMainPosition = "Center"
 res@tiMainOffsetYF = .02
 res@tiXAxisFontHeightF = .015
 
-res@gsnLeftString = "MSLP, std. MSLP anom. (1979-2009 CFSR), 1000-hPa wind"
+res@gsnLeftString = "700-hPa height, wind; PW, std. PW anom. (1979-2009 CFSR)"
 res@gsnLeftStringOrthogonalPosF = .012
 res@gsnLeftStringFontHeightF = .008
 res@gsnRightString = "(CFSR) "+ut_string(date,"")
@@ -270,36 +267,35 @@ end if
 
 ; *************************************************************
 
-mres = True										; MSLP contour information
+cnres = True								; Geopotential height information
 
-mres@gsnFrame = False                                        
-mres@gsnDraw = False
+cnres@gsnFrame = False                                        
+cnres@gsnDraw = False
 
-mres@gsnLeftString = " "
-mres@gsnRightString = " "
+cnres@gsnLeftString = " "
+cnres@gsnRightString = " "
 
-mres@cnInfoLabelOn = False                    
-mres@cnFillOn = False
-mres@cnLineLabelsOn = True
-mres@cnLinesOn = True
-mres@cnLabelMasking = True
-mres@cnLineThicknessF = 4                    
-mres@cnLevelSelectionMode = "ManualLevels"
-mres@cnLevelSpacingF = 4
-mres@cnMinLevelValF = 800
-mres@cnMaxLevelValF = 1200  
-mres@cnLineLabelAngleF = 0.0
-mres@cnLineLabelInterval = 2
-mres@cnLineLabelDensityF = 1.4
-;mres@cnSmoothingOn = True
-;mres@cnSmoothingDistanceF = 0.009
-mres@cnLineLabelBackgroundColor = -1
-mres@cnLineLabelFontHeightF = 0.008
-mres@gsnAddCyclic =  True
+cnres@cnInfoLabelOn = False                    
+cnres@cnFillOn = False
+cnres@cnLinesOn = True
+cnres@cnLabelMasking = True
+cnres@cnLineThicknessF = 4                     
+cnres@cnLevelSelectionMode = "ManualLevels"
+cnres@cnLevelSpacingF = 3
+cnres@cnMinLevelValF = 90
+cnres@cnMaxLevelValF = 420   
+cnres@cnLineLabelAngleF = 0.0
+cnres@cnLineLabelInterval = 2
+cnres@cnLineLabelDensityF = .90
+;cnres@cnSmoothingOn = True
+;cnres@cnSmoothingDistanceF = 0.009
+cnres@cnLineLabelBackgroundColor = -1
+cnres@cnLineLabelFontHeightF = 0.008
+cnres@gsnAddCyclic =  True
 
 ; *************************************************************
 
-    bres = True									; Wind barb information
+    bres = True								; Wind barb information
 
     bres@gsnFrame = False                                        
     bres@gsnDraw = False
@@ -324,20 +320,23 @@ mres@gsnAddCyclic =  True
     bres@gsnAddCyclic =  True
 
 ; *************************************************************
+res@mpFillOn = True
+res@mpOutlineOn = True
 res@mpFillDrawOrder = "PreDraw"
 res@cnFillDrawOrder = "PreDraw"
-mres@cnLineDrawOrder ="Draw"
+cnres@cnLineDrawOrder ="Draw"
 bres@vcVectorDrawOrder = "Draw"
 res@mpOutlineDrawOrder = "Draw"
 res@mpGridAndLimbDrawOrder = "PostDraw"
 
-plot = gsn_csm_contour_map(wks, std_anom2, res)         ; Plot filled standardized anom. map
-contours = gsn_csm_contour(wks, pmsl, mres)				; Plot MSLP contours	
-barbs = gsn_csm_vector(wks, u, v, bres)					; Plot wind barbs
-plot = add_map_tickmarks(wks,plot,tmres)				; Plot tick marks
+plot = gsn_csm_contour_map(wks, std_anom2, res)          	; Plot filled standardized anom. map
+contours = gsn_csm_contour(wks, g, cnres)					; Plot geopotential height
+barbs = gsn_csm_vector(wks, u, v, bres)						; Plot wind barbs
+plot = add_map_tickmarks(wks,plot,tmres)					; Plot tick marks
+
 ;********************************************
 
-overlay(plot,contours)				; Overlay variable order
+overlay(plot,contours)		; Overlay variable order
 overlay(plot,barbs)
 
 ;********************************************
