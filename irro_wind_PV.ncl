@@ -149,31 +149,31 @@ res@mpOutlineBoundarySets = "National"
 res@mpFillOn = False
 res@mpOutlineOn = True
 
-res@cnFillOn = True                                      ; Turn on color fill
+res@cnFillOn = True                                     ; Preciptable water information 			
 res@cnFillMode = "AreaFill"
 res@cnRasterSmoothingOn = True
 res@cnLevelSelectionMode = "ManualLevels"
-res@cnLinesOn = False                               ; Turn off contour lines
-res@cnLevelSpacingF = 5                             ; Shading interval
+res@cnLinesOn = False                               
+res@cnLevelSpacingF = 5                             
 res@cnMinLevelValF = 20
-res@cnMaxLevelValF = 70                          ; Shading interval
+res@cnMaxLevelValF = 70                          
 res@cnFillColors = (/-1,116,103,84,75,129,139,144,149,157,185,192/)
 
 ;**********************************************
 
-res@lbAutoManage = False                  ; Label Bar Information
+res@lbAutoManage = False                  	; Label Bar Information
 res@pmLabelBarOrthogonalPosF = .02
 res@pmLabelBarParallelPosF = .19  
 res@pmLabelBarHeightF = 0.08
 res@pmLabelBarWidthF = 0.36
 res@lbLabelAutoStride = True
 res@lbLabelFontHeightF = 0.0124
-res@lbBoxLinesOn  = True                  ; Outline the color bar 
+res@lbBoxLinesOn  = True                   
 res@lbTopMarginF = .3
 
 ;**********************************************
 
-res@tiMainString = " "
+res@tiMainString = " "						; Map label information
 res@tiMainJust = "CenterCenter"
 res@tiMainPosition = "Center" 
 res@tiMainOffsetYF = .02
@@ -188,7 +188,7 @@ res@gsnRightStringFontHeightF = .013
 
 ; *********************************************
 
-res@mpGeophysicalLineThicknessF = 4.5
+res@mpGeophysicalLineThicknessF = 4.5		; Map information
 res@mpNationalLineThicknessF = 4.5
 res@mpUSStateLineThicknessF = 4.5
 res@mpOutlineSpecifiers = (/"United States"/)+" : States"
@@ -203,7 +203,7 @@ res@mpDefaultFillColor = "green2"
 
 ; *********************************************
 
-res@mpGridAndLimbOn = True
+res@mpGridAndLimbOn = True					; Grid point and tickmark information
 res@mpGridLineDashPattern = 5
 res@mpGridLatSpacingF = 20.
 res@mpGridLonSpacingF = 20.
@@ -258,21 +258,17 @@ end if
 
 ; *************************************************************
 
-jres = True
+jres = True							; Shaded wind speed information
 
-jres@gsnFrame = False                                             ;DO NOT PLOT FIRST MAP
+jres@gsnFrame = False                       
 jres@gsnDraw = False
 
-;jres@mpDataBaseVersion = "MediumRes"                              ; Country Outlines
-;jres@mpDataSetName = "Earth..4"
-;jres@mpOutlineBoundarySets = "National"
-
-jres@cnFillOn = True                                              ; Turn on color fill
+jres@cnFillOn = True                            
 jres@cnFillMode = "AreaFill"
 jres@cnRasterSmoothingOn = True
 jres@cnLevelSelectionMode = "ExplicitLevels"
-jres@cnLinesOn = False                               ; Turn off contour lines
-jres@cnLevelSpacingF = 1                            ; Shading interval
+jres@cnLinesOn = False                               
+jres@cnLevelSpacingF = 1                           
 jres@cnLevels = (/30,40,50,60,70,80/)
 jres@cnFillColors = (/-1,213,212,211,231,232,233/)
 jres@lbLabelBarOn = True
@@ -281,27 +277,27 @@ jres@cnLineLabelsOn = False
 jres@cnInfoLabelOn = False 
 
 
-if domain .eq. "northamer" then
+if domain .eq. "northamer" then					; Define wind speed color bar (northamer)
 jres@pmLabelBarOrthogonalPosF = .0213
 jres@pmLabelBarParallelPosF = .81    
 jres@pmLabelBarHeightF = 0.11
 jres@pmLabelBarWidthF = 0.36
 jres@lbLabelAutoStride = True
 jres@lbLabelFontHeightF = 0.0124
-jres@lbBoxLinesOn  = True                            ; Outline the color bar 
+jres@lbBoxLinesOn  = True                            
 jres@lbTopMarginF = .3
 jres@gsnLeftString = " "
 jres@gsnRightString = " "
 end if
 
-if domain .eq. "conus"
+if domain .eq. "conus"							; Define wind speed color bar (CONUS)
 jres@pmLabelBarOrthogonalPosF = .0180
 jres@pmLabelBarParallelPosF = .81    
 jres@pmLabelBarHeightF = 0.118
 jres@pmLabelBarWidthF = 0.36
 jres@lbLabelAutoStride = True
 jres@lbLabelFontHeightF = 0.0124
-jres@lbBoxLinesOn  = True                            ; Outline the color bar 
+jres@lbBoxLinesOn  = True                            	 
 jres@lbTopMarginF = .3
 jres@gsnLeftString = " "
 jres@gsnRightString = " "
@@ -311,7 +307,7 @@ jres@gsnAddCyclic =  True
 
 ; *************************************************************
 
-pvres = True
+pvres = True									; PV contour information
 
 pvres@gsnFrame = False                                        
 pvres@gsnDraw = False
@@ -319,12 +315,12 @@ pvres@gsnDraw = False
 pvres@gsnLeftString = " "
 pvres@gsnRightString = " "
 
-pvres@cnInfoLabelOn = False                    ; Removes descriptive box in lower right corner
+pvres@cnInfoLabelOn = False                    
 pvres@cnFillOn = False
 pvres@cnLineLabelsOn = True
 pvres@cnLinesOn = True
 pvres@cnLabelMasking = True
-pvres@cnLineThicknessF = 5                    ; Changes thickness of contours
+pvres@cnLineThicknessF = 5                    
 pvres@cnLevelSelectionMode = "ManualLevels"
 pvres@cnLevelSpacingF = 1
 pvres@cnMinLevelValF = 1
@@ -341,14 +337,14 @@ pvres@gsnAddCyclic =  True
 
 ; *************************************************************
 
-omres = True
+omres = True									; Vertical motion information
 
 omres@gsnFrame = False                                        
 omres@gsnDraw = False
 
 omres@gsnLeftString = " "
 omres@gsnRightString = " "
-omres@cnInfoLabelOn = False                    ; Removes descriptive box in lower right corner
+omres@cnInfoLabelOn = False                    
 omres@cnFillOn = False
 omres@cnLinesOn = True
 omres@cnLabelMasking = True
@@ -369,7 +365,7 @@ omres@gsnAddCyclic =  True
 
 ; *************************************************************
 
-    vres = True
+    vres = True									; Irrotational wind vector information
 
     vres@gsnFrame = False                                        
     vres@gsnDraw = False
@@ -413,7 +409,7 @@ omres@gsnAddCyclic =  True
     vres@gsnAddCyclic =  True
 
 ; *************************************************************
-res@cnFillDrawOrder = "PreDraw"
+res@cnFillDrawOrder = "PreDraw"						; Draw order information
 jres@cnFillDrawOrder = "PreDraw"
 pvres@cnLineDrawOrder ="Draw"
 omres@cnLineDrawOrder ="Draw" 
