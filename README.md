@@ -1,5 +1,5 @@
 # NCL-CFSR
-Plotting atmospheric variables from the NCEP CFSR dataset using NCL.
+Plot atmospheric variables from the NCEP CFSR dataset using NCL.
 
 Code created while attending the University at Albany, SUNY. 
 
