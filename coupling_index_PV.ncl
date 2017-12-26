@@ -1,5 +1,5 @@
 ; ===========================================
-; Plots PV, irrotational wind, etc. from NCEP CFSR
+; Plots coupling index, PV, etc. from NCEP CFSR
 ; Last updated: 26 December 2017
 ; Created by: Alicia M. Bentley
 ; Email: abentley1110@gmail.com
@@ -26,7 +26,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "irro_wind_PV"
+name = "coupling_index_PV"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -86,14 +86,115 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
     print("Date:  "+ut_string(date,"")+" | Creating image #"+number) 	; Print date currently being plotted
 	yyyy = ut_string(date,"%Y")    			; Determine year of current date in yyyy form
 	
-    pwat_file = addfile("/cfsr/data/"+yyyy+"/pwat."+yyyy+".0p5.anl.nc","r")
-    w_file = addfile("/cfsr/data/"+yyyy+"/w."+yyyy+".0p5.anl.nc","r")
+    fil1 = addfile("/cfsr/data/"+yyyy+"/t."+yyyy+".0p5.anl.nc","r")
+    fil2 = addfile("/cfsr/data/"+yyyy+"/q."+yyyy+".0p5.anl.nc","r")
+    t_pv_file = addfile("/cfsr/data/"+yyyy+"/t_pv."+yyyy+".0p5.anl.nc","r")
+    pres_pv_file = addfile("/cfsr/data/"+yyyy+"/pres_pv."+yyyy+".0p5.anl.nc","r")
+    g_file = addfile("/cfsr/data/"+yyyy+"/g."+yyyy+".0p5.anl.nc","r")
     u_file = addfile("/cfsr/data/"+yyyy+"/u."+yyyy+".0p5.anl.nc","r")
     v_file = addfile("/cfsr/data/"+yyyy+"/v."+yyyy+".0p5.anl.nc","r")
     t_file = addfile("/cfsr/data/"+yyyy+"/t."+yyyy+".0p5.anl.nc","r")
+	pmsl_file = addfile("/cfsr/data/"+yyyy+"/pmsl."+yyyy+".0p5.anl.nc","r")
 
-    pwat = pwat_file->pwat({date},:,:)
+    pmsl = pmsl_file->pmsl({date},:,:)		; Obtain MSLP
+    pmsl = pmsl/100       ; convert from Pa/s to hPa/s
 
+; ******************************************************
+
+; Calculating theta-e 
+t0 = fil1->t({date},{1000:200},:,:)
+q0 = fil2->q({date},{1000:200},:,:)
+
+t = t0
+t@_FillValue = -999.
+
+q = q0
+q@_FillValue = -999.
+
+w = q   
+w = q/(1.-q)  ; convert specific humidity to mixing ratio
+w@_FillValue = -999.
+
+c_pd = 1004. ; specific heat at constant pressure for air [approx 1004 J/(kg-K)]
+R = 287. ; specific gas constant for air [J/(kg-K)]
+Rcpd = R/c_pd
+p0 = 100000.  ; Pa
+L_v = 2400000.  ; latent heat of vaporization at 25C
+	
+pc = conform(t,t&lev*100.,0) ; array containing pressure
+copy_VarCoords(t,pc)
+pc@_FillValue = -999.
+
+;print("computing RH")
+rh = t	
+rh = relhum(t,w,pc)  ; compute relative humidity
+rh@_FillValue = -999.
+
+;print("computing dewpoint")
+td = t
+td = dewtemp_trh(t,rh) ; compute dewpoint temperature
+td@_FillValue = -999.
+td = where(td.eq.0,.01,td)  ; make sure no dewpoint values = 0; for some reason the dewpoint calculation in ncl yields some 0 K dewpoints 
+
+
+; Theta-e calculation from Bolton (1980) that yields very accurate theta-e values
+tL = (1./((1./(td-56.))+(log(t/td)/800.)))+56.
+term2 = (3.376/tL-.00254)*w*1000.*(1.+.81*w)
+et = (.2854*(1.-(0.28*w)))
+term1 =  t*(p0/pc)^et
+
+theta_e = term1*exp(term2)
+copy_VarCoords(t,theta_e)
+
+; ******************************************************
+
+; Calculating DT potential temperature (theta)
+
+nh_t_pv = t_pv_file->t_pv({date},{2e-06},:,:)
+nh_pres_pv = pres_pv_file->pres_pv({date},{2e-06},:,:)
+sh_t_pv = t_pv_file->t_pv({date},{-2e-06},:,:)
+sh_pres_pv = pres_pv_file->pres_pv({date},{-2e-06},:,:)
+
+pres_pv = new( (/dimsizes(nh_pres_pv&lat),dimsizes(nh_pres_pv&lon)/),typeof(nh_pres_pv))
+t_pv = new( (/dimsizes(nh_t_pv&lat),dimsizes(nh_t_pv&lon)/),typeof(nh_t_pv))
+
+pres_pv!0 = "lat"
+pres_pv!1 = "lon"
+pres_pv&lat =nh_pres_pv&lat
+pres_pv&lon =nh_pres_pv&lon
+copy_VarMeta(pres_pv,t_pv)
+
+pres_pv({0:90},:) = nh_pres_pv({0:90},:)
+pres_pv({-90:-0.5},:) = sh_pres_pv({-90:-0.5},:)
+t_pv({0:90},:) = nh_t_pv({0:90},:)
+t_pv({-90:-0.5},:) = sh_t_pv({-90:-0.5},:)
+
+THETA_TROP = t_pv*((100000/pres_pv)^(2./7.))
+copy_VarMeta(t_pv,THETA_TROP)
+
+
+; ******************************************************
+
+; Calculate coupling index 
+coup = THETA_TROP(:,:) - theta_e({850},:,:)
+copy_VarCoords(THETA_TROP,coup)
+
+; ******************************************************
+
+; Calculate wind shear and 300-200-hPa PV
+
+    ut = u_file->u({date},{200},:,:)
+    vt = v_file->v({date},{200},:,:)
+    ub = u_file->u({date},{850},:,:)
+    vb = v_file->v({date},{850},:,:)
+
+    ushear = ut - ub
+    vshear = vt - vb 
+    ushear = ushear * 1.94384449 
+    vshear = vshear * 1.94384449
+    copy_VarCoords(coup,ushear)
+    copy_VarCoords(coup,vshear)    
+    
     lev_pv  = (/200,250,300/)
     lev_pv@units = "hPa"
     upv = u_file->u({date},{lev_pv},:,:)
@@ -104,24 +205,8 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
     pv = dim_avg_n_Wrap(pv_all,0)
     pv = pv*(10^6)
     copy_VarCoords(upv(0,:,:),pv)
-
-    u = u_file->u({date},{250},:,:)
-    v = v_file->v({date},{250},:,:)
-    wind = ((u^2)+(v^2))^(0.5)
-    copy_VarCoords(u,wind)
-
-    w_orig := w_file->w({date},{600:400},:,:)
-    w_temp := w_orig/100          ; convert from Pa/s to hPa/s
-    w := dim_avg_n_Wrap(w_temp,0) ; Averages over the specified layer
-    copy_VarCoords(u,w)
-
-    uirro = u_file->u({date},{300:200},:,:)
-    virro = v_file->v({date},{300:200},:,:)
-    div = uv2dvF_Wrap(uirro,virro)
-    irr = dv2uvF_Wrap(div)
-    irro = dim_avg_n_Wrap(irr,1) ; Averages over the specified layer
-
-	do d=0,3
+    
+    do d=0,3
 		pv=smth9(pv,.5,.25,True)		; Smooth PV field
 	end do
 
@@ -135,51 +220,53 @@ wks_type@wkWidth = 1600
 wks_type@wkHeight = 1600
 
 wks = gsn_open_wks(wks_type,img_folder+name+"_"+number)
-gsn_define_colormap(wks,"alicia_pwat")
+gsn_define_colormap(wks,"BlueRedGray")
 ;**********************************************
 
 res = True
 
-res@gsnFrame = False                                    ;DO NOT PLOT FIRST MAP
+res@gsnFrame = False                                             ;DO NOT PLOT FIRST MAP
 res@gsnDraw = False
 
-res@mpDataBaseVersion = "MediumRes"                     ; Country Outlines
+res@mpDataBaseVersion = "MediumRes"                              ; Country Outlines
 res@mpDataSetName = "Earth..4"
 res@mpOutlineBoundarySets = "National"
-res@mpFillOn = False
+res@mpFillOn = True
 res@mpOutlineOn = True
 
-res@cnFillOn = True                                     ; Preciptable water information 			
+res@cnFillOn = True                                             
 res@cnFillMode = "AreaFill"
 res@cnRasterSmoothingOn = True
-res@cnLevelSelectionMode = "ManualLevels"
+res@cnLevelSelectionMode = "ExplicitLevels"
 res@cnLinesOn = False                               
-res@cnLevelSpacingF = 5                             
-res@cnMinLevelValF = 20
-res@cnMaxLevelValF = 70                          
-res@cnFillColors = (/-1,116,103,84,75,129,139,144,149,157,185,192/)
+res@cnLevelSpacingF = 1                            
+res@cnLevels = (/-20,-15,-10,-5,0,5,10,15,20/)					; Shading coupling index information
+res@cnFillColors = (/240,217,187,162,138,36,68,95,116,-1/)
+res@cnSmoothingOn = True
+res@cnSmoothingTensionF = -2.
+res@cnSmoothingDistanceF = 0.001
 
 ;**********************************************
 
-res@lbAutoManage = False                  	; Label Bar Information
-res@pmLabelBarOrthogonalPosF = .02
-res@pmLabelBarParallelPosF = .19  
+res@lbAutoManage = False                   ; Label Bar Information
+res@pmLabelBarOrthogonalPosF = .02  
 res@pmLabelBarHeightF = 0.08
-res@pmLabelBarWidthF = 0.36
+res@pmLabelBarWidthF = 0.73
 res@lbLabelAutoStride = True
 res@lbLabelFontHeightF = 0.0124
-res@lbBoxLinesOn  = True                   
+res@lbBoxLinesOn  = True                    
 res@lbTopMarginF = .3
 
 ;**********************************************
 
-res@tiMainString = " "						; Map label information
+res@tiMainString = " "						; Image labels
 res@tiMainJust = "CenterCenter"
 res@tiMainPosition = "Center" 
 res@tiMainOffsetYF = .02
 res@tiXAxisFontHeightF = .015
 
-res@gsnLeftString = "250-hPa jet; 600~F15~-~F21~400-hPa ascent; 300~F15~-~F21~200-hPa PV/irr. wind; PW"
+
+res@gsnLeftString = "Coupling Index, 300~F15~-~F21~200-hPa PV, 850~F15~-~F21~200-hPa shear, sfc lows"
 res@gsnLeftStringOrthogonalPosF = .012
 res@gsnLeftStringFontHeightF = .008
 res@gsnRightString = "(CFSR) "+ut_string(date,"")
@@ -188,27 +275,23 @@ res@gsnRightStringFontHeightF = .013
 
 ; *********************************************
 
-res@mpGeophysicalLineThicknessF = 4.5		; Map information
-res@mpNationalLineThicknessF = 4.5
-res@mpUSStateLineThicknessF = 4.5
+res@mpGeophysicalLineThicknessF = 2.0		; Map information
+res@mpNationalLineThicknessF = 2.0
+res@mpUSStateLineThicknessF = 2.0
 res@mpOutlineSpecifiers = (/"United States"/)+" : States"
 
-res@pmTickMarkDisplayMode = "Always"
-
-res@mpGeophysicalLineColor = "grey31"
-res@mpNationalLineColor = "grey31"
-res@mpUSStateLineColor = "grey31"
-
-res@mpDefaultFillColor = "green2"
+res@mpGeophysicalLineColor = "grey29"
+res@mpNationalLineColor = "grey29"
+res@mpUSStateLineColor = "grey29"
 
 ; *********************************************
 
-res@mpGridAndLimbOn = True					; Grid point and tickmark information
+res@mpGridAndLimbOn = True					; grid line and tick mark information
 res@mpGridLineDashPattern = 5
 res@mpGridLatSpacingF = 20.
 res@mpGridLonSpacingF = 20.
 res@mpGridLineThicknessF = 3
-res@mpGridLineColor = "grey12"
+res@mpGridLineColor = "grey29"
 res@pmTickMarkDisplayMode = "Always"
 
 tmres = True
@@ -223,9 +306,10 @@ tmres@tmYRMinorValues = (/5,10,15,25,30,35,45,50,55,65/)
 tmres@tmYLMinorValues = (/5,10,15,25,30,35,45,50,55,65/)
 tmres@tmXBMinorValues = (/-155,-150,-145,-135,-130,-125,-120,-115,-110,-105,-95,-90,-85,-80,-75,-70,-65,-55,-50,-45,-35,-30,-25,-15,-10,-5,5,10,15,25,30,35/)
 
+
 ; *************************************************************
 
-if domain .eq. "northamer"					; Define domains	
+if domain .eq. "northamer" then
 res@mpProjection = "LambertConformal"
 res@mpLambertParallel2F = 31
 res@mpLambertParallel1F = 11
@@ -258,55 +342,6 @@ end if
 
 ; *************************************************************
 
-jres = True							; Shaded wind speed information
-
-jres@gsnFrame = False                       
-jres@gsnDraw = False
-
-jres@cnFillOn = True                            
-jres@cnFillMode = "AreaFill"
-jres@cnRasterSmoothingOn = True
-jres@cnLevelSelectionMode = "ExplicitLevels"
-jres@cnLinesOn = False                               
-jres@cnLevelSpacingF = 1                           
-jres@cnLevels = (/30,40,50,60,70,80/)
-jres@cnFillColors = (/-1,213,212,211,231,232,233/)
-jres@lbLabelBarOn = True
-jres@lbAutoManage = False
-jres@cnLineLabelsOn = False
-jres@cnInfoLabelOn = False 
-
-
-if domain .eq. "northamer" then					; Define wind speed color bar (northamer)
-jres@pmLabelBarOrthogonalPosF = .0213
-jres@pmLabelBarParallelPosF = .81    
-jres@pmLabelBarHeightF = 0.11
-jres@pmLabelBarWidthF = 0.36
-jres@lbLabelAutoStride = True
-jres@lbLabelFontHeightF = 0.0124
-jres@lbBoxLinesOn  = True                            
-jres@lbTopMarginF = .3
-jres@gsnLeftString = " "
-jres@gsnRightString = " "
-end if
-
-if domain .eq. "conus"							; Define wind speed color bar (CONUS)
-jres@pmLabelBarOrthogonalPosF = .0180
-jres@pmLabelBarParallelPosF = .81    
-jres@pmLabelBarHeightF = 0.118
-jres@pmLabelBarWidthF = 0.36
-jres@lbLabelAutoStride = True
-jres@lbLabelFontHeightF = 0.0124
-jres@lbBoxLinesOn  = True                            	 
-jres@lbTopMarginF = .3
-jres@gsnLeftString = " "
-jres@gsnRightString = " "
-end if
-
-jres@gsnAddCyclic =  True
-
-; *************************************************************
-
 pvres = True									; PV contour information
 
 pvres@gsnFrame = False                                        
@@ -320,7 +355,7 @@ pvres@cnFillOn = False
 pvres@cnLineLabelsOn = True
 pvres@cnLinesOn = True
 pvres@cnLabelMasking = True
-pvres@cnLineThicknessF = 4                    
+pvres@cnLineThicknessF = 4.0                    
 pvres@cnLevelSelectionMode = "ManualLevels"
 pvres@cnLevelSpacingF = 1
 pvres@cnMinLevelValF = 1
@@ -335,105 +370,85 @@ pvres@cnLineColor = "grey15"
 
 pvres@gsnAddCyclic =  True
 
-; *************************************************************
+; ************************************************************* 
 
-omres = True									; Vertical motion information
+mres = True							; MSLP information
 
-omres@gsnFrame = False                                        
-omres@gsnDraw = False
+mres@gsnFrame = False                                        
+mres@gsnDraw = False
 
-omres@gsnLeftString = " "
-omres@gsnRightString = " "
-omres@cnInfoLabelOn = False                    
-omres@cnFillOn = False
-omres@cnLinesOn = True
-omres@cnLabelMasking = True
-omres@cnLineLabelsOn = False
-omres@cnLineThicknessF = 4
-omres@cnLineColor = "red"
-omres@cnLevelSelectionMode = "ManualLevels"
-omres@cnLevelSpacingF = 0.005
-omres@cnMaxLevelValF = -0.005 
-omres@cnLineLabelAngleF = 0.0
-omres@cnLineLabelInterval = 1
-omres@cnLineLabelDensityF = .77
-omres@cnLineLabelBackgroundColor = -1
-omres@cnLineLabelFontHeightF = 0.018
+mres@gsnLeftString = " "
+mres@gsnRightString = " "
 
-omres@gsnAddCyclic =  True
+mres@cnInfoLabelOn = False                    
+mres@cnFillOn = False
+mres@cnLineLabelsOn = False
+mres@cnLinesOn = False
+mres@gsnAddCyclic =  True
+mres@cnLowLabelsOn = True
+mres@cnLowLabelBackgroundColor = -1
+mres@cnLowLabelString = "L"
+mres@cnLowLabelPerimOn = False
+mres@cnLowLabelFontHeightF = 0.016
+mres@cnHighLabelFontHeightF = 0.016
+mres@cnLowLabelFontThicknessF = 8.0
+mres@cnHighLabelFontThicknessF = 8.0
+mres@cnLowLabelFontColor = "red2"
+;mres@cnLowLabelFont = "complex_roman"
+;mres@cnLowLabelFont = "times-bold"
+mres@cnLowLabelFont = "courier-bold"
+
+; ************************************************************* 
 
 
-; *************************************************************
+    bres = True							; Wind barb information
 
-    vres = True									; Irrotational wind vector information
+    bres@gsnFrame = False                                        
+    bres@gsnDraw = False
 
-    vres@gsnFrame = False                                        
-    vres@gsnDraw = False
+    bres@gsnLeftString = " "
+    bres@gsnRightString = " "
 
-    vres@gsnLeftString = " "
-    vres@gsnRightString = " "
-
-    vres@vcGlyphStyle = "FillArrow"
-    vres@vcWindBarbColor = "black"
-    vres@vcFillArrowEdgeColor = "black"
-    vres@vcFillArrowFillColor = "black"
-    vres@vcWindBarbCalmCircleSizeF = 0
-    vres@vcWindBarbLineThicknessF = 7.5
-    vres@vcMinDistanceF = 0.023
-    vres@vcMinMagnitudeF = 3.0
-    vres@gsnAddCyclic =  True
-    
-    if domain .eq. "northamer" then
-    vres@vcRefAnnoOn = True 
-    vres@vcRefAnnoString1 = "$VMG$ m s~S~~F15~-~F21~1"
-    vres@vcRefLengthF = 0.035
-    vres@vcRefMagnitudeF = 10.0
-    vres@vcRefAnnoSide = "Top"
-    vres@vcRefAnnoOrthogonalPosF = -1.046
-    vres@vcRefAnnoParallelPosF = .999
-    vres@vcRefAnnoString2On = False
-    end if
-    
-    if domain .eq. "conus" then
-    vres@vcRefAnnoOn = True 
-    vres@vcRefAnnoString1 = "$VMG$ m s~S~~F15~-~F21~1"
-    vres@vcRefLengthF = 0.035
-    vres@vcRefMagnitudeF = 10.0
-    vres@vcRefAnnoSide = "Top"
-    vres@vcRefAnnoOrthogonalPosF = -1.047
-    vres@vcRefAnnoParallelPosF = .999
-    vres@vcRefAnnoString2On = False
-    vres@vcMinDistanceF = 0.024
-    end if
-    
-    vres@gsnAddCyclic =  True
+    bres@vcGlyphStyle = "WindBarb"
+    bres@vcWindBarbColor = "grey25"
+    bres@vcWindBarbCalmCircleSizeF = 0
+    bres@vcWindBarbLineThicknessF = 3.0
+    bres@vcRefAnnoOn = False
+    bres@vcRefLengthF = 0.0242
+    bres@vcRefMagnitudeF = 10.0
+    bres@vcRefAnnoString2On = False
+    bres@vcRefAnnoOrthogonalPosF = -1.08
+    bres@vcMinDistanceF = 0.040
+    bres@vcWindBarbTickLengthF = 0.37
+    bres@vcWindBarbTickSpacingF = 0.130
+    bres@vcWindBarbTickAngleF = 55.0
+    bres@gsnFrame = False
 
 ; *************************************************************
-res@cnFillDrawOrder = "PreDraw"						; Draw order information
-jres@cnFillDrawOrder = "PreDraw"
-pvres@cnLineDrawOrder ="Draw"
-omres@cnLineDrawOrder ="Draw" 
-vres@vcVectorDrawOrder = "Draw"
+res@mpFillDrawOrder = "PreDraw"
+res@cnFillDrawOrder = "PreDraw"
+bres@vcVectorDrawOrder = "Draw"
 res@mpOutlineDrawOrder = "Draw"
+mres@cnLabelDrawOrder = "Draw"
+pvres@cnLineDrawOrder ="Draw"
 res@mpGridAndLimbDrawOrder = "PostDraw"
 
-plot = gsn_csm_contour_map(wks, pwat, res)          ; Plot filled contour map
-jet = gsn_csm_contour(wks, wind, jres)
+plot = gsn_csm_contour_map(wks, coup, res)          ; Plot filled contour map
 contours = gsn_csm_contour(wks, pv, pvres)
-other = gsn_csm_contour(wks, w, omres)
-vect = gsn_csm_vector(wks, irro(0,:,:), irro(1,:,:), vres)
+lows = gsn_csm_contour(wks, pmsl, mres)
+barbs = gsn_csm_vector(wks, ushear, vshear, bres)
+
 plot = add_map_tickmarks(wks,plot,tmres)
 
 ;********************************************
 
-overlay(plot,jet)
+overlay(plot,lows)
 overlay(plot,contours)
-overlay(plot,other)
-overlay(plot,vect)
+overlay(plot,barbs)
 
 ;********************************************
 
-draw(plot)	; Draw final image
+draw(plot)					; Draw final image
 frame(wks)
 
 ;********************************************
