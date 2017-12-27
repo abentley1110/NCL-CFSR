@@ -1,5 +1,5 @@
 ; ===========================================
-; Plots standardized 925-hPa wind speed anom. from NCEP CFSR
+; Plots standardized 250-hPa wind speed anom. from NCEP CFSR
 ; Last updated: 26 December 2017
 ; Created by: Alicia M. Bentley
 ; Email: abentley1110@gmail.com
@@ -26,7 +26,7 @@ print("**************")
 ; Define what variables, domains, and directories
 ;*******************************************************
 
-name = "925speed_standard_anom"   ; image name
+name = "250speed_standard_anom"   ; image name
 
 foldername = "superstorm93"  ; event name
 
@@ -90,13 +90,13 @@ do date = bdate,edate,6       ; Create images from start date to end date (with 
     v_file = addfile("/cfsr/data/"+yyyy+"/v."+yyyy+".0p5.anl.nc","r")
     g_file = addfile("/cfsr/data/"+yyyy+"/g."+yyyy+".0p5.anl.nc","r")
 
-    u = u_file->u({date},{925},:,:)
-    v = v_file->v({date},{925},:,:)
+    u = u_file->u({date},{250},:,:)
+    v = v_file->v({date},{250},:,:)
     wind = ((u^2)+(v^2))^(0.5)
     copy_VarCoords(u,wind)
 
-fmean = addfile("/lb13/abentley/data/cfsr/climo/925wind/uv.0p5.mean.climo.nc","r")
-fstdev = addfile("/lb13/abentley/data/cfsr/climo/925wind/uv.0p5.stdev.climo.nc","r")
+fmean = addfile("/lb13/abentley/data/cfsr/climo/250wind/uv.0p5.mean.climo.nc","r")
+fstdev = addfile("/lb13/abentley/data/cfsr/climo/250wind/uv.0p5.stdev.climo.nc","r")
 
 	dne_yyyy = stringtoint(ut_string(date,"%Y"))
 	dne_mm = stringtoint(ut_string(date,"%N"))
@@ -107,8 +107,8 @@ fstdev = addfile("/lb13/abentley/data/cfsr/climo/925wind/uv.0p5.stdev.climo.nc",
     sdoy = day_of_year(dne_yyyy,dne_mm,dne_dd)
 
 	g_all = wind
-    g_mean := fmean->uv({sdoy},{dne_hh},{925},:,:)
-    g_stdev := fstdev->uv({sdoy},{dne_hh},{925},:,:)
+    g_mean := fmean->uv({sdoy},{dne_hh},{250},:,:)
+    g_stdev := fstdev->uv({sdoy},{dne_hh},{250},:,:)
     
   	std_anom2 := ((g_all - g_mean)/g_stdev)
   	copy_VarMeta( g_all, std_anom2 )
@@ -116,11 +116,11 @@ fstdev = addfile("/lb13/abentley/data/cfsr/climo/925wind/uv.0p5.stdev.climo.nc",
   	u = u * 1.94384449 
   	v = v * 1.94384449 
     
-    g = g_file->g({date},{925},:,:)
+    g = g_file->g({date},{250},:,:)
   	g = g/10
 
   	do d=0,1
-    	g=smth9(g,.5,.25,True)		; Smooth 925-hPa geo. height field
+    	g=smth9(g,.5,.25,True)		; Smooth 250-hPa geo. height field
   	end do
 
 ;==============================================
@@ -199,7 +199,7 @@ res@tiMainPosition = "Center"
 res@tiMainOffsetYF = .02
 res@tiXAxisFontHeightF = .015
 
-res@gsnLeftString = "925-hPa geo. height, wind, std. wind speed anom. (1979-2009 CFSR)"
+res@gsnLeftString = "250-hPa geo. height, wind, std. wind speed anom. (1979-2009 CFSR)"
 res@gsnLeftStringOrthogonalPosF = .012
 res@gsnLeftStringFontHeightF = .008
 res@gsnRightString = "(CFSR) "+ut_string(date,"")
@@ -288,9 +288,9 @@ cnres@cnLinesOn = True
 cnres@cnLabelMasking = True
 cnres@cnLineThicknessF = 4                     
 cnres@cnLevelSelectionMode = "ManualLevels"
-cnres@cnLevelSpacingF = 3
-cnres@cnMinLevelValF = -27
-cnres@cnMaxLevelValF = 300   
+cnres@cnLevelSpacingF = 12
+cnres@cnMinLevelValF = 900
+cnres@cnMaxLevelValF = 1200   
 cnres@cnLineLabelAngleF = 0.0
 cnres@cnLineLabelInterval = 2
 cnres@cnLineLabelDensityF = 1.0
