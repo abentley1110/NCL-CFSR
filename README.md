@@ -13,5 +13,5 @@ See the NCL webpage for help with plotting resources: https://www.ncl.ucar.edu/D
 
 Email specific code-related questions to: abentley1110@gmail.com
 
-Last update: 26 December 2017
+Last update: 27 December 2017
 
